@@ -35,7 +35,7 @@ class BBTreeNode():
         self.objective = objective
         self.prob = prob
 
-    def __deepcopy__(self):
+    def __deepcopy__(self, x):
         """
         Deepcopies the picos problem.
         This overrides the system's deepcopy method bc it doesn't work
@@ -116,14 +116,31 @@ class BBTreeNode():
         """
         # these lines build up the initial problem and add it to a heap
         root = self
+        #find the non int solution
         res = root.buildProblem().solve(solver='cvxopt')
         heap = [(res, next(counter), root)]
         # set bestres to an arbitrary small initial best objective value
         bestres = -1e20
         # initialize bestnode_vars to the root vars
-        bestnode_vars = root.vars
-
-        #TODO:
-        # Implement your solution here!
-
+        bestnode_vars = root.vars      
+            
+        while len(heap)>0:
+            _,_,n=hq.heappop(heap)
+            try:
+                curr_result = n.prob.solve(solver='cvxopt')
+            except:
+                pass
+            if bestres>curr_result.value:
+                pass
+            elif n.is_integral():
+                bestres = float(n.vars[-1])
+                bestnode_vars = [i.value for i in n.vars]
+            else:
+                for i in n.vars:
+                    if i.value != None and abs(round(i.value)-float(i))>1e-4:
+                        hq.heappush(heap, (float(bestres), next(counter), n.branch_floor(i))) 
+                        hq.heappush(heap, (float(bestres), next(counter), n.branch_ceil(i)))
+                    break
+        if bestres == -1e20:
+            print("No feasible solutions :(") 
         return bestres, bestnode_vars
